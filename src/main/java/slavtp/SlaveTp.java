@@ -21,7 +21,7 @@ public class SlaveTp implements ModInitializer {
 
 	//Delacarion del item
 	public static final Item VILLAGER_LINK_ITEM = new VillagerLinkItem(new Item.Settings().maxCount(1));
-	public static final Block ALTAR_BLOCK = new AltarBlock(FabricBlockSettings.copyOf(Blocks.OBSIDIAN).requiresTool());
+	public static final Block ALTAR_BLOCK = new AltarBlock(FabricBlockSettings.copyOf(Blocks.OBSIDIAN).requiresTool().nonOpaque());
 	public static final Item ALTAR_BLOCK_ITEM = new BlockItem(ALTAR_BLOCK, new Item.Settings());
 
 	@Override

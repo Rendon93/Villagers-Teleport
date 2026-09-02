@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "slave-tp:block/altar_block"
+    }
+  }
+}

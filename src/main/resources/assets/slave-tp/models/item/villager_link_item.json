@@ -1,0 +1,6 @@
+{
+  "parent": "item/handheld",
+  "textures": {
+    "layer0": "slave-tp:item/villager_link_item"
+  }
+}
