@@ -1,4 +1,5 @@
 {
   "item.slave-tp.villager_link_item": "Vinculador de Aldeanos",
-  "block.slave-tp.altar_block": "Altar de Teletransporte"
+  "block.slave-tp.altar_block": "Altar de Teletransporte",
+  "block.slave-tp.transport_anchor_block": "Ancla de Teletransporte"
 }

@@ -7,8 +7,12 @@ import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 import org.joml.Matrix4f;
 import slavtp.block.entity.AltarBlockEntity;
+import net.minecraft.particle.ParticleTypes;
+import net.minecraft.util.math.random.Random;
+import net.minecraft.world.World;
 
 public class AltarBlockEntityRenderer implements BlockEntityRenderer<AltarBlockEntity> {
     private static final Identifier CIRCLE_TEXTURE = new Identifier("slave-tp", "textures/entity/magic_circle.png");
@@ -52,5 +56,33 @@ public class AltarBlockEntityRenderer implements BlockEntityRenderer<AltarBlockE
         buffer.vertex(matrix,  currentRadius, 0, -currentRadius).color(255, 255, 255, alpha).texture(uMax, vMin).overlay(overlay).light(maxLight).normal(0, 1, 0).next();
 
         matrices.pop();
+
+        World world = entity.getWorld();
+        if (world != null && world.isClient()) {
+            Random random = world.getRandom();
+
+            // Aparecen con más frecuencia conforme el circuito se completa
+            if (random.nextFloat() < (0.4f * progress)) {
+                double offsetX = (random.nextDouble() - 0.5) * 4.8;
+                double offsetZ = (random.nextDouble() - 0.5) * 4.8;
+
+                double x = entity.getPos().getX() + 0.5 + offsetX;
+                double y = entity.getPos().getY() + 1.05;
+                double z = entity.getPos().getZ() + 0.5 + offsetZ;
+
+                // Color personalizado (ejemplo: Rojo Carmesí)
+                double red = 1.0;
+                double green = 0.1;
+                double blue = 0.1;
+
+                world.addParticle(
+                        ParticleTypes.ENTITY_EFFECT,
+                        x, y, z,
+                        red, green, blue
+                );
+            }
+        }
+
+
     }
 }

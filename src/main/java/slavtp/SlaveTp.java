@@ -1,6 +1,7 @@
 package slavtp;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.item.v1.FabricItemSettings;
 import net.fabricmc.fabric.api.object.builder.v1.block.FabricBlockSettings;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
@@ -12,8 +13,12 @@ import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import slavtp.block.AltarBlock;
+import slavtp.block.TransportAnchorBlock;
 import slavtp.block.entity.ModBlockEntities;
+import slavtp.event.StructureProtectionHandler;
 import slavtp.item.VillagerLinkItem;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import slavtp.command.ConfirmAltarCommand;
 
 public class SlaveTp implements ModInitializer {
 	public static final String MOD_ID = "slave-tp";
@@ -23,6 +28,8 @@ public class SlaveTp implements ModInitializer {
 	public static final Item VILLAGER_LINK_ITEM = new VillagerLinkItem(new Item.Settings().maxCount(1));
 	public static final Block ALTAR_BLOCK = new AltarBlock(FabricBlockSettings.copyOf(Blocks.OBSIDIAN).requiresTool().nonOpaque());
 	public static final Item ALTAR_BLOCK_ITEM = new BlockItem(ALTAR_BLOCK, new Item.Settings());
+	public static final Block TRANSPORT_ANCHOR_BLOCK = registerBlock("transport_anchor_block",
+			new TransportAnchorBlock(FabricBlockSettings.copyOf(Blocks.CALCITE).requiresTool().strength(0.75f)));
 
 	@Override
 	public void onInitialize() {
@@ -35,9 +42,26 @@ public class SlaveTp implements ModInitializer {
 
 		//Registro de Block Entities
 		ModBlockEntities.registerBlockEntities();
+		// Registrar la protección de las plataformas
+		StructureProtectionHandler.register();
+
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			ConfirmAltarCommand.register(dispatcher);
+		});
 	}
 
 	public static Identifier id(String path) {
 		return new Identifier(MOD_ID, path);
 	}
+
+	private static Block registerBlock(String name, Block block) {
+		registerBlockItem(name, block);
+		return Registry.register(Registries.BLOCK, new Identifier("slave-tp", name), block);
+	}
+
+	private static Item registerBlockItem(String name, Block block) {
+		return Registry.register(Registries.ITEM, new Identifier("slave-tp", name),
+				new BlockItem(block, new FabricItemSettings()));
+	}
+
 }
