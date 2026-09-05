@@ -37,16 +37,22 @@ public class TransportAnchorBlockEntityRenderer implements BlockEntityRenderer<T
         matrices.push();
 
         // Elevar levemente sobre la superficie del bloque de calcita
-        matrices.translate(0.5, 1.01, 0.5);
+        matrices.translate(0.5, 1.02, 0.5);
+
 
         // Rotación continua lenta del círculo
-        float angle = (entity.getRenderTicks() + tickDelta) * 0.5f;
+        //float angle = (entity.getRenderTicks() + tickDelta) * 0.5f;
+
+        float animationTicks = progress * drawingDuration;
+        float angle = animationTicks * 1.0f; // Multiplicador de velocidad de giro
         matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle));
 
         MatrixStack.Entry entry = matrices.peek();
         Matrix4f matrix = entry.getPositionMatrix();
 
-        VertexConsumer buffer = vertexConsumers.getBuffer(RenderLayer.getEntityTranslucent(CIRCLE_TEXTURE));
+        VertexConsumer buffer = vertexConsumers.getBuffer(RenderLayer.getEntityTranslucentEmissive(CIRCLE_TEXTURE));
+        // Cambia la línea donde obtienes el buffer por esta:
+        //VertexConsumer buffer = vertexConsumers.getBuffer(RenderLayer.getEyes(CIRCLE_TEXTURE));
 
         // Escala del círculo para cubrir la plataforma de 5x5 (radio 2.5)
         float radius = 2.5f;

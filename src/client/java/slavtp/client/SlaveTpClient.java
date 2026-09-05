@@ -14,6 +14,7 @@ public class SlaveTpClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		// This entrypoint is suitable for setting up client-specific logic, such as rendering.
 		BlockRenderLayerMap.INSTANCE.putBlock(SlaveTp.ALTAR_BLOCK, RenderLayer.getTranslucent());
+		BlockRenderLayerMap.INSTANCE.putBlock(SlaveTp.TRANSPORT_ANCHOR_BLOCK, RenderLayer.getTranslucent());
 
 		// Registro del renderizador para proyectar el círculo mágico sobre la obsidiana
 		BlockEntityRendererFactories.register(ModBlockEntities.ALTAR_BLOCK_ENTITY, AltarBlockEntityRenderer::new);

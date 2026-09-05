@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "slave-tp:block/transport_anchor_block" }
+  }
+}

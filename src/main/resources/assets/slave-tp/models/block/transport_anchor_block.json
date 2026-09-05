@@ -1,7 +1,6 @@
 {
-	"format_version": "1.9.0",
 	"credit": "Made with Blockbench",
-	"parent": "altar_block",
+	"parent": "block/block",
 	"textures": {
 		"0": "slave-tp:block/anchor_block",
 		"1": "slave-tp:block/texture_inner",

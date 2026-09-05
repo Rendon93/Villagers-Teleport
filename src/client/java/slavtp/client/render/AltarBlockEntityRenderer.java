@@ -55,6 +55,7 @@ public class AltarBlockEntityRenderer implements BlockEntityRenderer<AltarBlockE
         buffer.vertex(matrix,  currentRadius, 0,  currentRadius).color(255, 255, 255, alpha).texture(uMax, vMax).overlay(overlay).light(maxLight).normal(0, 1, 0).next();
         buffer.vertex(matrix,  currentRadius, 0, -currentRadius).color(255, 255, 255, alpha).texture(uMax, vMin).overlay(overlay).light(maxLight).normal(0, 1, 0).next();
 
+
         matrices.pop();
 
         World world = entity.getWorld();
