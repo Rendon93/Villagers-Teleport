@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class AltarSavedData extends PersistentState{
+public class AltarSavedData extends PersistentState {
     private final Map<UUID, BlockPos> playerAltars = new HashMap<>();
 
     public static AltarSavedData get(ServerWorld world) {
@@ -49,6 +49,21 @@ public class AltarSavedData extends PersistentState{
         return playerAltars.get(playerUuid);
     }
 
+    public BlockPos getNearestAltar(BlockPos origin) {
+        BlockPos nearest = null;
+        double minDistanceSq = Double.MAX_VALUE;
+
+        for (BlockPos altarPos : playerAltars.values()) {
+            double distSq = altarPos.getSquaredDistance(origin);
+            if (distSq < minDistanceSq) {
+                minDistanceSq = distSq;
+                nearest = altarPos;
+            }
+        }
+
+        return nearest;
+    }
+
     public void setAltar(UUID playerUuid, BlockPos pos) {
         playerAltars.put(playerUuid, pos);
         markDirty();
@@ -60,7 +75,6 @@ public class AltarSavedData extends PersistentState{
     }
 
     public void removeAltarIfAt(BlockPos pos) {
-        // Busca si alguna posición guardada coincide con la del bloque destruido y la elimina
         playerAltars.entrySet().removeIf(entry -> entry.getValue().equals(pos));
         markDirty();
     }

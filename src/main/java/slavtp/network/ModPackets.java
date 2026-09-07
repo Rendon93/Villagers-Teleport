@@ -4,12 +4,16 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
 public class ModPackets {
+    // Declaración del paquete para los rayos rojos
+    public static final Identifier RED_LIGHTNING_EFFECT_PACKET = new Identifier("slavtp", "red_lightning_effect");
+
     public static final Identifier TELEPORT_REQUEST_PACKET = new Identifier("slave-tp", "teleport_request");
+    public static final Identifier OPEN_ANCHOR_GUI_PACKET = new Identifier("slave-tp", "open_anchor_gui");
 
     public static void registerServerPackets() {
         ServerPlayNetworking.registerGlobalReceiver(TELEPORT_REQUEST_PACKET, (server, player, handler, buf, responseSender) -> {

@@ -6,8 +6,10 @@ import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
 import slavtp.block.entity.ModBlockEntities;
+import slavtp.client.network.ModClientPackets;
 import slavtp.client.render.AltarBlockEntityRenderer;
 import slavtp.client.render.TransportAnchorBlockEntityRenderer;
+import slavtp.network.ModPackets;
 
 public class SlaveTpClient implements ClientModInitializer {
 	@Override
@@ -18,6 +20,10 @@ public class SlaveTpClient implements ClientModInitializer {
 
 		// Registro del renderizador para proyectar el círculo mágico sobre la obsidiana
 		BlockEntityRendererFactories.register(ModBlockEntities.ALTAR_BLOCK_ENTITY, AltarBlockEntityRenderer::new);
+		// Registrar ModPacket(?)
+		ModClientPackets.registerClientPackets();
+
+
 
 		BlockEntityRendererFactories.register(
 				ModBlockEntities.TRANSPORT_ANCHOR_BLOCK_ENTITY,

@@ -19,6 +19,7 @@ import slavtp.event.StructureProtectionHandler;
 import slavtp.item.VillagerLinkItem;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import slavtp.command.ConfirmAltarCommand;
+import slavtp.network.ModPackets;
 
 public class SlaveTp implements ModInitializer {
 	public static final String MOD_ID = "slave-tp";
@@ -44,6 +45,10 @@ public class SlaveTp implements ModInitializer {
 		ModBlockEntities.registerBlockEntities();
 		// Registrar la protección de las plataformas
 		StructureProtectionHandler.register();
+		// Registrar ModPacket
+		ModPackets.registerServerPackets();
+
+
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
 			ConfirmAltarCommand.register(dispatcher);

@@ -1,22 +1,31 @@
 package slavtp.item;
 
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemUsageContext;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Formatting;
-import net.minecraft.util.math.Box;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
+import slavtp.block.AltarBlock;
 import slavtp.block.TransportAnchorBlock;
 import slavtp.data.AltarSavedData;
+import slavtp.data.AnchorLocationData;
+import slavtp.network.ModPackets;
 
 import java.util.List;
+import java.util.Map;
 
 public class VillagerLinkItem extends Item {
 
@@ -32,62 +41,129 @@ public class VillagerLinkItem extends Item {
 
         if (world.isClient() || player == null) return ActionResult.SUCCESS;
 
-        // Solo actuamos si el jugador hace clic sobre el TransportAnchorBlock
-        if (world.getBlockState(pos).getBlock() instanceof TransportAnchorBlock) {
+        ServerWorld serverWorld = (ServerWorld) world;
 
-            // 1. Verificar experiencia del jugador
-            if (player.experienceLevel < 1 && !player.isCreative()) {
-                player.sendMessage(
-                        Text.literal("Necesitas al menos 1 nivel de experiencia para activar el ritual.")
-                                .formatted(Formatting.RED),
-                        true
-                );
-                return ActionResult.FAIL;
-            }
+        // =========================================================================
+        // DIRECCIÓN 2: ALTAR -> ANCLA (Abre la GUI para seleccionar destino)
+        // =========================================================================
+        if (world.getBlockState(pos).getBlock() instanceof AltarBlock) {
 
-            // 2. Obtener la ubicación del Altar vinculada al jugador
-            AltarSavedData savedData = AltarSavedData.get((ServerWorld) world);
-            BlockPos targetAltarPos = savedData.getAltar(player.getUuid());
-
-            if (targetAltarPos == null) {
-                player.sendMessage(
-                        Text.literal("No tienes ningún Altar vinculado. Coloca y activa un Altar primero.")
-                                .formatted(Formatting.RED),
-                        true
-                );
-                return ActionResult.FAIL;
-            }
-
-            // 3. Buscar aldeanos en el área de 5x5 sobre la plataforma (radio de 2.5 bloques, altura de 2)
+            // Verificar si hay aldeanos sobre el Altar antes de desplegar el menú
             Box searchBox = new Box(pos).expand(2.5, 1.0, 2.5);
             List<VillagerEntity> villagers = world.getEntitiesByClass(VillagerEntity.class, searchBox, entity -> true);
 
             if (villagers.isEmpty()) {
                 player.sendMessage(
-                        Text.literal("No hay aldeanos sobre la plataforma de anclaje.")
-                                .formatted(Formatting.YELLOW),
+                        Text.literal("No hay aldeanos sobre el Altar para transportar.").formatted(Formatting.YELLOW),
                         true
                 );
                 return ActionResult.FAIL;
             }
 
-            // 4. Cobrar la experiencia
+            if (player.experienceLevel < 1 && !player.isCreative()) {
+                player.sendMessage(
+                        Text.literal("Necesitas al menos 1 nivel de experiencia para activar el Altar.").formatted(Formatting.RED),
+                        true
+                );
+                return ActionResult.FAIL;
+            }
+
+            // Obtener el registro global de Anclas
+            AnchorLocationData anchorData = AnchorLocationData.get(serverWorld);
+            Map<BlockPos, Text> anchors = anchorData.getAnchors();
+
+            if (anchors.isEmpty()) {
+                player.sendMessage(
+                        Text.literal("No hay Anclas de Transporte registradas a las cuales enviar los aldeanos.").formatted(Formatting.YELLOW),
+                        true
+                );
+                return ActionResult.FAIL;
+            }
+
+            // Enviar la lista de Anclas al cliente para abrir la GUI
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeInt(anchors.size());
+            for (Map.Entry<BlockPos, Text> entry : anchors.entrySet()) {
+                buf.writeBlockPos(entry.getKey());
+                buf.writeText(entry.getValue());
+            }
+
+            if (player instanceof ServerPlayerEntity serverPlayer) {
+                ServerPlayNetworking.send(serverPlayer, ModPackets.OPEN_ANCHOR_GUI_PACKET, buf);
+            }
+
+            return ActionResult.SUCCESS;
+        }
+
+        // =========================================================================
+        // DIRECCIÓN 1: ANCLA -> ALTAR (Transporte directo de aldeanos)
+        // =========================================================================
+        if (world.getBlockState(pos).getBlock() instanceof TransportAnchorBlock) {
+
+            if (player.experienceLevel < 1 && !player.isCreative()) {
+                player.sendMessage(
+                        Text.literal("Necesitas al menos 1 nivel de experiencia para activar el ritual.").formatted(Formatting.RED),
+                        true
+                );
+                return ActionResult.FAIL;
+            }
+
+            // Buscar el Altar vinculado al jugador
+            AltarSavedData savedData = AltarSavedData.get(serverWorld);
+            BlockPos targetAltarPos = savedData.getAltar(player.getUuid());
+
+            // Si el jugador no tiene Altar propio, buscar el Altar más cercano en la lista global
+            if (targetAltarPos == null) {
+                targetAltarPos = savedData.getNearestAltar(pos);
+            }
+
+            if (targetAltarPos == null) {
+                player.sendMessage(
+                        Text.literal("No existe ningún Altar activo en el mundo al cual enviar los aldeanos.").formatted(Formatting.RED),
+                        true
+                );
+                return ActionResult.FAIL;
+            }
+
+            // Buscar aldeanos sobre la plataforma del Ancla
+            Box searchBox = new Box(pos).expand(2.5, 1.0, 2.5);
+            List<VillagerEntity> villagers = world.getEntitiesByClass(VillagerEntity.class, searchBox, entity -> true);
+
+            if (villagers.isEmpty()) {
+                player.sendMessage(
+                        Text.literal("No hay aldeanos sobre la plataforma de anclaje.").formatted(Formatting.YELLOW),
+                        true
+                );
+                return ActionResult.FAIL;
+            }
+
+            // Consumir XP
             if (!player.isCreative()) {
                 player.addExperienceLevels(-1);
             }
 
-            // 5. Teletransportar a cada aldeano sobre el Altar
-            BlockPos destination = targetAltarPos.up(); // Posición justo encima del Altar
+            // Teletransportar a los aldeanos
+            BlockPos destination = targetAltarPos.up();
             for (VillagerEntity villager : villagers) {
                 villager.teleport(destination.getX() + 0.5, destination.getY(), destination.getZ() + 0.5, true);
             }
 
-            // 6. Efectos de sonido
+// Enviar paquete a los jugadores cercanos para renderizar los rayos rojos en el cliente
+            PacketByteBuf buf = PacketByteBufs.create();
+            buf.writeBlockPos(destination);
+
+            for (ServerPlayerEntity trackingPlayer : PlayerLookup.tracking(serverWorld, destination)) {
+                ServerPlayNetworking.send(trackingPlayer, ModPackets.RED_LIGHTNING_EFFECT_PACKET, buf);
+            }
+
+// Reproducir el estruendo de trueno vanilla sin peligro
+            world.playSound(null, destination, SoundEvents.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.PLAYERS, 1.0f, 1.0f);
+
             world.playSound(null, pos, SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1.0f, 1.0f);
             world.playSound(null, destination, SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1.0f, 1.0f);
 
             player.sendMessage(
-                    Text.literal("¡Transporte completado! Se han trasladado " + villagers.size() + " aldeano(s).")
+                    Text.literal("¡Transporte completado! Se han trasladado " + villagers.size() + " aldeano(s) al Altar.")
                             .formatted(Formatting.GREEN),
                     true
             );
