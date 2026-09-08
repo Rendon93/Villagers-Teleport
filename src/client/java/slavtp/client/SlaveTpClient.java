@@ -1,5 +1,6 @@
 package slavtp.client;
 
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import slavtp.SlaveTp;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.blockrenderlayer.v1.BlockRenderLayerMap;
@@ -8,8 +9,9 @@ import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
 import slavtp.block.entity.ModBlockEntities;
 import slavtp.client.network.ModClientPackets;
 import slavtp.client.render.AltarBlockEntityRenderer;
+import slavtp.client.render.RedLightningRenderer;
 import slavtp.client.render.TransportAnchorBlockEntityRenderer;
-import slavtp.network.ModPackets;
+
 
 public class SlaveTpClient implements ClientModInitializer {
 	@Override
@@ -20,8 +22,11 @@ public class SlaveTpClient implements ClientModInitializer {
 
 		// Registro del renderizador para proyectar el círculo mágico sobre la obsidiana
 		BlockEntityRendererFactories.register(ModBlockEntities.ALTAR_BLOCK_ENTITY, AltarBlockEntityRenderer::new);
-		// Registrar ModPacket(?)
+		// Registrar receptores de red del cliente
 		ModClientPackets.registerClientPackets();
+
+		// Registrar el evento de renderizado de los rayos rojos
+		WorldRenderEvents.LAST.register(RedLightningRenderer::render);
 
 
 

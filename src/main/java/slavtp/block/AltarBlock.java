@@ -47,6 +47,34 @@ public class AltarBlock extends BlockWithEntity {
         return BlockRenderType.MODEL;
     }
 
+    @Override
+    public void randomDisplayTick(BlockState state, World world, BlockPos pos, net.minecraft.util.math.random.Random random) {
+        // Si tienes una propiedad de activación (ej. ACTIVATED), descomenta la siguiente línea:
+        // if (!state.get(ACTIVATED)) return;
+
+        double centerX = pos.getX() + 0.5;
+        double centerY = pos.getY() + 1.2;
+        double centerZ = pos.getZ() + 0.5;
+
+        for (int i = 0; i < 2; i++) {
+            double offsetX = (random.nextDouble() - 0.5) * 2.5;
+            double offsetY = random.nextDouble() * 1.5;
+            double offsetZ = (random.nextDouble() - 0.5) * 2.5;
+
+            double vx = (random.nextDouble() - 0.5) * 0.015;
+            double vy = random.nextDouble() * 0.008 + 0.002;
+            double vz = (random.nextDouble() - 0.5) * 0.015;
+
+            world.addParticle(
+                    net.minecraft.particle.ParticleTypes.END_ROD,
+                    centerX + offsetX,
+                    centerY + offsetY,
+                    centerZ + offsetZ,
+                    vx, vy, vz
+            );
+        }
+    }
+
     @Nullable
     @Override
     public BlockEntity createBlockEntity(BlockPos pos, BlockState state) {
