@@ -2,8 +2,8 @@
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "L S",
-    " O ",
-    "I A"
+    " E ",
+    "I O"
   ],
   "key": {
     "S": {
@@ -15,8 +15,8 @@
     "L": {
       "item": "minecraft:lapis_lazuli"
     },
-    "A": {
-      "item": "slave-tp:altar_block"
+    "E": {
+      "item": "minecraft:ender_eye"
     },
     "I": {
       "item": "minecraft:iron_ingot"
