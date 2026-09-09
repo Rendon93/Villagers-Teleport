@@ -1,38 +1,36 @@
 package slavtp.block;
 
-import net.minecraft.block.BlockEntityProvider;
 import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.BlockWithEntity;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.enchantment.EnchantmentHelper;
+import net.minecraft.enchantment.Enchantments;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.stat.Stats;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.Text;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.random.Random;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import slavtp.block.entity.AltarBlockEntity;
 import slavtp.block.entity.ModBlockEntities;
+import slavtp.data.AltarSavedData;
 import slavtp.item.VillagerLinkItem;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import slavtp.data.AltarSavedData;
-import net.minecraft.enchantment.EnchantmentHelper;
-import net.minecraft.enchantment.Enchantments;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.stat.Stats;
-import net.minecraft.world.World;
 import java.util.UUID;
 
 public class AltarBlock extends BlockWithEntity {
@@ -43,14 +41,28 @@ public class AltarBlock extends BlockWithEntity {
 
     @Override
     public BlockRenderType getRenderType(BlockState state) {
-        // Necesario en BlockWithEntity para que el bloque no se vuelva invisible
         return BlockRenderType.MODEL;
     }
 
+    /**
+     * Valida que exista una plataforma 5x5 de obsidiana en la misma altura Y que el Altar.
+     */
+    public static boolean checkObsidianStructure(World world, BlockPos altarPos) {
+        for (int x = -2; x <= 2; x++) {
+            for (int z = -2; z <= 2; z++) {
+                if (x == 0 && z == 0) continue; // Salta el bloque central
+                BlockPos checkPos = altarPos.add(x, 0, z);
+                if (!world.getBlockState(checkPos).isOf(Blocks.OBSIDIAN)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     @Override
-    public void randomDisplayTick(BlockState state, World world, BlockPos pos, net.minecraft.util.math.random.Random random) {
-        // Si tienes una propiedad de activación (ej. ACTIVATED), descomenta la siguiente línea:
-        // if (!state.get(ACTIVATED)) return;
+    public void randomDisplayTick(BlockState state, World world, BlockPos pos, Random random) {
+        if (!checkObsidianStructure(world, pos)) return;
 
         double centerX = pos.getX() + 0.5;
         double centerY = pos.getY() + 1.2;
@@ -101,8 +113,10 @@ public class AltarBlock extends BlockWithEntity {
                     return ActionResult.SUCCESS;
                 }
             }
+
+            return ActionResult.PASS;
         }
-        return ActionResult.SUCCESS;
+        return ActionResult.PASS;
     }
 
     // --- LÓGICA AL COLOCAR EL BLOQUE ---
@@ -112,13 +126,22 @@ public class AltarBlock extends BlockWithEntity {
 
         if (!world.isClient() && placer instanceof ServerPlayerEntity player) {
             ServerWorld serverWorld = (ServerWorld) world;
+
+            if (!checkObsidianStructure(world, pos)) {
+                player.sendMessage(
+                        Text.literal("Altar colocado, pero la estructura de 24 obsidianas está incompleta. Complétala para activarlo.")
+                                .formatted(Formatting.RED),
+                        false
+                );
+                return;
+            }
+
             AltarSavedData data = AltarSavedData.get(serverWorld);
             UUID uuid = player.getUuid();
 
             BlockPos previousPos = data.getAltar(uuid);
 
             if (previousPos != null && !previousPos.equals(pos)) {
-                // Generamos un botón interactivo [SÍ] que ejecuta un comando al hacer clic
                 Text yesBtn = Text.literal(" [SÍ]")
                         .formatted(Formatting.GREEN, Formatting.BOLD)
                         .styled(style -> style.withClickEvent(new ClickEvent(
@@ -126,19 +149,22 @@ public class AltarBlock extends BlockWithEntity {
                                 "/slavetp confirm_altar " + pos.getX() + " " + pos.getY() + " " + pos.getZ()
                         )));
 
-                Text message = Text.literal("Ya tienes un altar en otra ubicación. ¿Deseas construir este? (Se perderá el otro altar)")
+                Text message = Text.literal("Ya tienes un altar en otra ubicación. ¿Deseas activar este? (Se perderá el anterior)")
                         .formatted(Formatting.YELLOW)
                         .append(yesBtn);
 
                 player.sendMessage(message, false);
             } else {
-                // Si es el primer altar que coloca, lo registramos directamente
                 data.setAltar(uuid, pos);
+                player.sendMessage(
+                        Text.literal("¡Altar de Transporte vinculado con éxito!").formatted(Formatting.GREEN),
+                        false
+                );
             }
         }
     }
 
-    // --- LÓGICA AL DESTRUIR EL BLOQUE MANUALE MENTE ---
+    // --- LÓGICA AL DESTRUIR EL BLOQUE MANUALMENTE ---
     @Override
     public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
         if (!state.isOf(newState.getBlock()) && !world.isClient() && world instanceof ServerWorld serverWorld) {
@@ -150,19 +176,14 @@ public class AltarBlock extends BlockWithEntity {
 
     @Override
     public void afterBreak(World world, PlayerEntity player, BlockPos pos, BlockState state, @Nullable BlockEntity blockEntity, ItemStack tool) {
-        // Registra la estadística de romper el bloque en el jugador
         player.incrementStat(Stats.MINED.getOrCreateStat(this));
         player.addExhaustion(0.005F);
 
         if (!world.isClient()) {
-            // Verificar si la herramienta principal tiene el encantamiento Silk Touch (Toque de Seda)
             boolean hasSilkTouch = EnchantmentHelper.getLevel(Enchantments.SILK_TOUCH, tool) > 0;
-
             if (hasSilkTouch) {
-                // Si tiene Silk Touch, dropea el ítem del bloque de manera normal
                 dropStack(world, pos, new ItemStack(this));
             }
-            // Si no tiene Silk Touch, simplemente no se llama a dropStack y el bloque desaparece por completo
         }
     }
 }

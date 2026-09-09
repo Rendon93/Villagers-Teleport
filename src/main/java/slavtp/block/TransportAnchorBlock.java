@@ -22,6 +22,7 @@ import org.jetbrains.annotations.Nullable;
 import slavtp.block.entity.ModBlockEntities;
 import slavtp.block.entity.TransportAnchorBlockEntity;
 import slavtp.data.AnchorLocationData;
+import slavtp.item.VillagerLinkItem;
 
 public class TransportAnchorBlock extends BlockWithEntity {
 
@@ -35,13 +36,17 @@ public class TransportAnchorBlock extends BlockWithEntity {
             ItemStack stack = player.getStackInHand(hand);
             BlockEntity be = world.getBlockEntity(pos);
 
-            // 1. Asignar nombre personalizado usando un Name Tag
+            // 1. Si usa VillagerLinkItem, DEJAR PASAR la acción para que useOnBlock del ítem se ejecute
+            if (stack.getItem() instanceof VillagerLinkItem) {
+                return ActionResult.PASS;
+            }
+
+            // 2. Asignar nombre personalizado usando un Name Tag
             if (stack.isOf(Items.NAME_TAG) && be instanceof TransportAnchorBlockEntity anchor) {
                 if (stack.hasCustomName()) {
                     Text newName = stack.getName();
                     anchor.setCustomName(newName);
 
-                    // Actualizar el nombre en la lista global guardada en el servidor
                     if (world instanceof ServerWorld serverWorld) {
                         AnchorLocationData.get(serverWorld).addAnchor(pos, newName);
                     }
@@ -55,26 +60,24 @@ public class TransportAnchorBlock extends BlockWithEntity {
                 }
             }
 
-            // 2. Mensaje informativo si se interactúa con la mano vacía
+            // 3. Mensaje informativo si se interactúa con la mano vacía
             if (stack.isEmpty()) {
                 player.sendMessage(
                         Text.literal("Ancla de Transporte lista. Usa el activador con 1 nivel de EXP para iniciar el traslado.")
                                 .formatted(Formatting.AQUA),
                         true
                 );
+                return ActionResult.SUCCESS;
             }
         }
-        return ActionResult.SUCCESS;
+        return ActionResult.PASS;
     }
-
-    // --- GESTIÓN DE REGISTRO GLOBAL DE ANCLAS ---
 
     @Override
     public void onPlaced(World world, BlockPos pos, BlockState state, @Nullable LivingEntity placer, ItemStack itemStack) {
         super.onPlaced(world, pos, state, placer, itemStack);
         if (!world.isClient() && world instanceof ServerWorld serverWorld) {
             if (world.getRegistryKey() == World.OVERWORLD) {
-                // Registrar ancla con nombre predeterminado al colocar el bloque
                 AnchorLocationData.get(serverWorld).addAnchor(pos, Text.literal("Ancla de Transporte"));
             }
         }
@@ -83,7 +86,6 @@ public class TransportAnchorBlock extends BlockWithEntity {
     @Override
     public void onStateReplaced(BlockState state, World world, BlockPos pos, BlockState newState, boolean moved) {
         if (!state.isOf(newState.getBlock()) && !world.isClient() && world instanceof ServerWorld serverWorld) {
-            // Eliminar de la lista global si el bloque es destruido
             AnchorLocationData.get(serverWorld).removeAnchor(pos);
         }
         super.onStateReplaced(state, world, pos, newState, moved);
@@ -91,7 +93,7 @@ public class TransportAnchorBlock extends BlockWithEntity {
 
     @Override
     public BlockRenderType getRenderType(BlockState state) {
-        return BlockRenderType.MODEL; // Evita que el bloque se vuelva invisible
+        return BlockRenderType.MODEL;
     }
 
     @Nullable

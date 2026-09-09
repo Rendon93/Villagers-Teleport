@@ -5,6 +5,7 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.PersistentState;
 import net.minecraft.world.PersistentStateManager;
+import slavtp.block.AltarBlock;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,15 +50,29 @@ public class AltarSavedData extends PersistentState {
         return playerAltars.get(playerUuid);
     }
 
-    public BlockPos getNearestAltar(BlockPos origin) {
+    /**
+     * Busca el altar válido (con bloque activo y estructura de obsidiana completa) más cercano.
+     * Si encuentra una posición registrada donde ya no existe el altar, la elimina.
+     */
+    public BlockPos getValidNearestAltar(ServerWorld world, BlockPos origin) {
         BlockPos nearest = null;
         double minDistanceSq = Double.MAX_VALUE;
 
-        for (BlockPos altarPos : playerAltars.values()) {
-            double distSq = altarPos.getSquaredDistance(origin);
-            if (distSq < minDistanceSq) {
-                minDistanceSq = distSq;
-                nearest = altarPos;
+        Map<UUID, BlockPos> copy = new HashMap<>(playerAltars);
+
+        for (Map.Entry<UUID, BlockPos> entry : copy.entrySet()) {
+            BlockPos altarPos = entry.getValue();
+
+            // Validar que el bloque siga siendo un AltarBlock y tenga las obsidianas
+            if (world.getBlockState(altarPos).getBlock() instanceof AltarBlock && AltarBlock.checkObsidianStructure(world, altarPos)) {
+                double distSq = altarPos.getSquaredDistance(origin);
+                if (distSq < minDistanceSq) {
+                    minDistanceSq = distSq;
+                    nearest = altarPos;
+                }
+            } else {
+                // Si la estructura ya no es válida, la removemos del registro
+                removeAltarIfAt(altarPos);
             }
         }
 

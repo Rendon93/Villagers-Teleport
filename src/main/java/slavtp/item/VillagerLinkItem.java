@@ -48,8 +48,11 @@ public class VillagerLinkItem extends Item {
         // =========================================================================
         if (world.getBlockState(pos).getBlock() instanceof AltarBlock) {
 
-            // Verificar si hay aldeanos sobre el Altar antes de desplegar el menú
-            Box searchBox = new Box(pos).expand(2.5, 1.0, 2.5);
+            // Caja de búsqueda 5x5 en la superficie del Altar
+            Box searchBox = new Box(
+                    pos.getX() - 2, pos.getY(), pos.getZ() - 2,
+                    pos.getX() + 3, pos.getY() + 2.5, pos.getZ() + 3
+            );
             List<VillagerEntity> villagers = world.getEntitiesByClass(VillagerEntity.class, searchBox, entity -> true);
 
             if (villagers.isEmpty()) {
@@ -68,7 +71,6 @@ public class VillagerLinkItem extends Item {
                 return ActionResult.FAIL;
             }
 
-            // Obtener el registro global de Anclas
             AnchorLocationData anchorData = AnchorLocationData.get(serverWorld);
             Map<BlockPos, Text> anchors = anchorData.getAnchors();
 
@@ -80,7 +82,6 @@ public class VillagerLinkItem extends Item {
                 return ActionResult.FAIL;
             }
 
-            // Enviar la lista de Anclas al cliente para abrir la GUI
             PacketByteBuf buf = PacketByteBufs.create();
             buf.writeInt(anchors.size());
             for (Map.Entry<BlockPos, Text> entry : anchors.entrySet()) {
@@ -108,30 +109,32 @@ public class VillagerLinkItem extends Item {
                 return ActionResult.FAIL;
             }
 
-            // Buscar el Altar vinculado al jugador
+            // Buscar Altar activo vinculado al jugador o el más cercano válido con obsidianas
             AltarSavedData savedData = AltarSavedData.get(serverWorld);
             BlockPos targetAltarPos = savedData.getAltar(player.getUuid());
 
-            // Si el jugador no tiene Altar propio, buscar el Altar más cercano en la lista global
-            if (targetAltarPos == null) {
-                targetAltarPos = savedData.getNearestAltar(pos);
+            if (targetAltarPos == null || !(world.getBlockState(targetAltarPos).getBlock() instanceof AltarBlock) || !AltarBlock.checkObsidianStructure(world, targetAltarPos)) {
+                targetAltarPos = savedData.getValidNearestAltar(serverWorld, pos);
             }
 
             if (targetAltarPos == null) {
                 player.sendMessage(
-                        Text.literal("No existe ningún Altar activo en el mundo al cual enviar los aldeanos.").formatted(Formatting.RED),
+                        Text.literal("No existe ningún Altar activo guardado al cual enviar los aldeanos.").formatted(Formatting.RED),
                         true
                 );
                 return ActionResult.FAIL;
             }
 
-            // Buscar aldeanos sobre la plataforma del Ancla
-            Box searchBox = new Box(pos).expand(2.5, 1.0, 2.5);
+            // Cobertura exacta 5x5 en la superficie del Ancla
+            Box searchBox = new Box(
+                    pos.getX() - 2, pos.getY(), pos.getZ() - 2,
+                    pos.getX() + 3, pos.getY() + 2.5, pos.getZ() + 3
+            );
             List<VillagerEntity> villagers = world.getEntitiesByClass(VillagerEntity.class, searchBox, entity -> true);
 
             if (villagers.isEmpty()) {
                 player.sendMessage(
-                        Text.literal("No hay aldeanos sobre la plataforma de anclaje.").formatted(Formatting.YELLOW),
+                        Text.literal("No hay aldeanos sobre la plataforma 5x5 de anclaje.").formatted(Formatting.YELLOW),
                         true
                 );
                 return ActionResult.FAIL;
@@ -142,13 +145,13 @@ public class VillagerLinkItem extends Item {
                 player.addExperienceLevels(-1);
             }
 
-            // Teletransportar a los aldeanos
+            // Teletransportar aldeanos a la parte superior del Altar
             BlockPos destination = targetAltarPos.up();
             for (VillagerEntity villager : villagers) {
                 villager.teleport(destination.getX() + 0.5, destination.getY(), destination.getZ() + 0.5, true);
             }
 
-// Enviar paquete a los jugadores cercanos para renderizar los rayos rojos en el cliente
+            // Enviar paquete a los clientes cercanos para renderizar los rayos rojos en el Altar
             PacketByteBuf buf = PacketByteBufs.create();
             buf.writeBlockPos(destination);
 
@@ -156,9 +159,8 @@ public class VillagerLinkItem extends Item {
                 ServerPlayNetworking.send(trackingPlayer, ModPackets.RED_LIGHTNING_EFFECT_PACKET, buf);
             }
 
-// Reproducir el estruendo de trueno vanilla sin peligro
+            // Efectos de sonido
             world.playSound(null, destination, SoundEvents.ENTITY_LIGHTNING_BOLT_THUNDER, SoundCategory.PLAYERS, 1.0f, 1.0f);
-
             world.playSound(null, pos, SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1.0f, 1.0f);
             world.playSound(null, destination, SoundEvents.ENTITY_ENDERMAN_TELEPORT, SoundCategory.PLAYERS, 1.0f, 1.0f);
 
